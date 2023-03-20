@@ -1,7 +1,7 @@
 import scipy.cluster.hierarchy as shc
 import plotly.graph_objects as go
 import numpy as np
-from complex_datastructure import Complex
+from .complex_datastructure import Complex
 
 
 class HierarchicalClustering:
