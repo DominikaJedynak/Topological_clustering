@@ -3,14 +3,13 @@ import plotly.graph_objects as go
 import numpy as np
 from .complex_datastructure import Complex
 
-
-class HierarchicalClustering:
+class Clustering:
     def __init__(self, my_complex):
         """
         :param my_complex: complex at which trajectories will be located
         """
-        self.complex = my_complex 
-        
+        self.complex = my_complex
+      
     def coefs_to_symbols(self, trajectory):
         """
         :param trajectory: list of 3D points representing the trajectory
@@ -18,22 +17,16 @@ class HierarchicalClustering:
         distances = cdist(trajectory, self.complex.points, 'euclidean')  # distances to landmarks
         symbols = np.array([np.argmin(point_to_mesh) for point_to_mesh in distances])
         return symbols
-        
+    
     def fit(self, trajectories):
-        """
-        :param trajectories: list of trajectories (consisting of 3D points)
-        """
-        paths_2d = trajectories.reshape(trajectories.shape[0], -1)  
-        clusters = shc.fclusterdata(paths_2d, 5, criterion="distance") # TO DO: 5 as parameter!
-        return self
-        
+        pass # needs to be implemented by children classes
+            
     def fit_predict(self, trajectories):
         """
         :param trajectories: list of trajectories (consisting of 3D points)
         """
-        paths_2d = trajectories.reshape(trajectories.shape[0], -1)  
-        clusters = shc.fclusterdata(paths_2d, 8, criterion="distance")
-        return clusters
+        self.fit(trajectories) 
+        return self.clusters
     
     def draw_predict(self, trajectories, show_now=True, on_complex=True):
         """
@@ -75,3 +68,27 @@ class HierarchicalClustering:
         if show_now:
             fig.show()
         
+    
+
+class HierarchicalClustering(Clustering):
+             
+    def fit(self, trajectories):
+        """
+        :param trajectories: list of trajectories (consisting of 3D points)
+        """
+        paths_2d = trajectories.reshape(trajectories.shape[0], -1)  
+        self.clusters = shc.fclusterdata(paths_2d, 5, criterion="distance") # TO DO: 5 as parameter!
+        return self
+    
+   
+class TopologicalClustering(Clustering):
+             
+    def fit(self, trajectories):
+        """
+        :param trajectories: list of trajectories (consisting of 3D points)
+        """
+        
+        return self
+
+    
+    
