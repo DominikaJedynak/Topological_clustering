@@ -77,7 +77,7 @@ class HierarchicalClustering(Clustering):
         :param trajectories: list of trajectories (consisting of 3D points)
         """
         paths_2d = trajectories.reshape(trajectories.shape[0], -1)  
-        self.clusters = shc.fclusterdata(paths_2d, 5, criterion="distance") # TO DO: 5 as parameter!
+        self.clusters = shc.fclusterdata(paths_2d, 8, criterion="distance") # TO DO: 5 as parameter!
         return self
     
    
@@ -87,7 +87,14 @@ class TopologicalClustering(Clustering):
         """
         :param trajectories: list of trajectories (consisting of 3D points)
         """
-        
+        N = 3 #number of iterations to be set
+        self.clusters = np.ones(len(trajectories))
+        for step in range(N):
+            num_clust = max(self.clusters)
+            for cluster_nr in range(1, num_clust+1):
+                C = Complex([trajectories[trajectories == cluster_nr, step]])
+                # TO DO
+                
         return self
 
     
