@@ -1,6 +1,8 @@
 import scipy.cluster.hierarchy as shc
 import plotly.graph_objects as go
+from scipy.spatial.distance import cdist
 import numpy as np
+
 from .complex_datastructure import Complex
 
 class Clustering:
