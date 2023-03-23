@@ -1,2 +1,2 @@
 from .complex_datastructure import Complex
-from .clustering import HierarchicalClustering
+from .clustering import Clustering, HierarchicalClustering, TopologicalClustering
