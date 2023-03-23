@@ -32,14 +32,14 @@ class Clustering:
             
     def fit_predict(self, trajectories):
         """
-        :param trajectories: list of trajectories (consisting of 3D points)
+        :param trajectories: list of trajectories (consisting of symbols)
         """
         self.fit(trajectories) 
         return self.clusters
     
     def draw_predict(self, trajectories, show_now=True, on_complex=True):
         """
-        :param trajectories: list of trajectories (consisting of 3D points)
+        :param trajectories: list of trajectories (consisting of symbols)
         :param show_now: flag indicating if the plot should be printed now (or only returned)
         :param on_complex: flag indicating if path should be drawn on a compex or on its own
         """
@@ -60,8 +60,9 @@ class Clustering:
             fig.update_layout(autosize=False, width=1000, height=1000)
             
         clusters = self.fit_predict(trajectories)
+        trajectories_coefs = map(self.symbols_to_coefs, trajectories)
         
-        for path, col in zip(trajectories, clusters):
+        for path, col in zip(trajectories_coefs, clusters):
             #print(path)
             #print(path[:0])
             #fig.data[].line.color = "#ffe476"
@@ -83,9 +84,10 @@ class HierarchicalClustering(Clustering):
              
     def fit(self, trajectories):
         """
-        :param trajectories: list of trajectories (consisting of 3D points)
+        :param trajectories: list of trajectories (consisting of symbols)
         """
-        paths_2d = trajectories.reshape(trajectories.shape[0], -1)  
+        trajectories_coefs = map(self.symbols_to_coefs, trajectories)
+        paths_2d = trajectories.reshape(trajectories_coefs.shape[0], -1)  
         self.clusters = shc.fclusterdata(paths_2d, 8, criterion="distance") # TO DO: 5 as parameter!
         return self
     
@@ -94,7 +96,7 @@ class TopologicalClustering(Clustering):
              
     def fit(self, trajectories):
         """
-        :param trajectories: list of trajectories (consisting of 3D points)
+        :param trajectories: list of trajectories (consisting of symbols)
         """
         N = 3 #number of iterations to be set
         self.clusters = np.ones(len(trajectories))
