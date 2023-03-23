@@ -15,8 +15,15 @@ class Clustering:
         :param trajectory: list of 3D points representing the trajectory
         """
         distances = cdist(trajectory, self.complex.points, 'euclidean')  # distances to landmarks
-        symbols = np.array([np.argmin(point_to_mesh) for point_to_mesh in distances])
+        symbols = np.array([np.argmin(point_to_mesh) for point_to_mesh in distances])      
         return symbols
+    
+    def symbols_to_coefs(self, trajectory):
+        """
+        :param trajectory: list of symbols representing the trajectory
+        """
+        coefs = [self.complex.points[v] for v in trajectory]
+        return coefs
     
     def fit(self, trajectories):
         pass # needs to be implemented by children classes
