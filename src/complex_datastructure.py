@@ -4,16 +4,23 @@ import plotly.graph_objects as go
 
 class Complex:
     """
-    A class for storing max 2D Rips complex build on the set of 3D points
+    A class for storing max 2D complex build on the set of 3D points. Complex can be created from 
+    a dict of simplexes on a given set of points or as a Rips complex, if dict is not given 
     """
     
-    def __init__(self, points, max_edge_length):
+    def __init__(self, points, simplexes=None, max_edge_length=1):
         """
-        :param points: sets of 3d points to build the complex on
+        :param coordinates: sets of 3d points to build the complex on
         :param max_edge_length: the distance used to decide which subsets of points should create a simplex
         """
         self.points = points
-        self.complex = gudhi.RipsComplex(points=points, max_edge_length=max_edge_length).create_simplex_tree(max_dimension=2)
+        if simplexes is not None:
+            self.complex = SimplexTree()
+            for d in simplices:
+                for s in simplices[d]:
+                    self.complex.insert(s)
+        else:
+            self.complex = gudhi.RipsComplex(points=points, max_edge_length=max_edge_length).create_simplex_tree(max_dimension=2)
         
     def zero_simplexes(self):
         return np.array([s[0] for s in self.complex.get_skeleton(0)])
@@ -23,7 +30,13 @@ class Complex:
     
     def two_simplexes(self):
         return np.array([s[0] for s in self.complex.get_skeleton(2) if len(s[0])==3])
-    
+   
+    def connected_components(self):
+        components = DisjointSet(self.zero_simplexes())
+        for (v1, v2) in self.one_simplexes():
+            components.merge(v1, v2)
+        return components.subsets()
+
     def count_simplexes(self):
         return len(self.zero_simplexes()), len(self.one_simplexes()), len(self.two_simplexes()) 
     
