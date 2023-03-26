@@ -2,6 +2,7 @@ import scipy.cluster.hierarchy as shc
 import plotly.graph_objects as go
 from scipy.spatial.distance import cdist
 import numpy as np
+import random
 
 from .complex_datastructure import Complex
 
@@ -43,16 +44,7 @@ class Clustering:
         :param show_now: flag indicating if the plot should be printed now (or only returned)
         :param on_complex: flag indicating if path should be drawn on a compex or on its own
         """
-        def color_dict(nr):
-            if nr==1:
-                return 'green'
-            if nr==2:
-                return 'orange'
-            if nr==3:
-                return 'magenta'
-            if nr==4:
-                return 'blue'
-        
+
         if on_complex:
             fig = self.complex.draw_complex(show_now=False)
         else:
@@ -60,14 +52,12 @@ class Clustering:
             fig.update_layout(autosize=False, width=1000, height=1000)
             
         clusters = self.fit_predict(trajectories)
-        trajectories_coefs = map(self.symbols_to_coefs, trajectories)
+        trajectories_coefs = np.array(list(map(self.symbols_to_coefs, trajectories)))
+        color_map = [(random.randint(0,255), random.randint(0,255), random.randint(0,255)) for i in range(max(clusters))]
         
         for path, col in zip(trajectories_coefs, clusters):
-            #print(path)
-            #print(path[:0])
-            #fig.data[].line.color = "#ffe476"
             data = []
-            data = data + [go.Scatter3d(x=path[:,0], y=path[:,1], z=path[:,2], mode='markers+lines', line=dict(color=color_dict(col), width=10))]
+            data = data + [go.Scatter3d(x=path[:,0], y=path[:,1], z=path[:,2], mode='markers+lines', line=dict(color="rgb" + str(color_map[col-1]), width=10))]
             fig.add_traces(data)
         fig.update_traces(showlegend=False)
 
@@ -86,9 +76,11 @@ class HierarchicalClustering(Clustering):
         """
         :param trajectories: list of trajectories (consisting of symbols)
         """
-        trajectories_coefs = map(self.symbols_to_coefs, trajectories)
-        paths_2d = trajectories.reshape(trajectories_coefs.shape[0], -1)  
-        self.clusters = shc.fclusterdata(paths_2d, 8, criterion="distance") # TO DO: 5 as parameter!
+        def combinatorial_dict(x,y):
+            pass
+        trajectories_coefs = np.array(list(map(self.symbols_to_coefs, trajectories)))
+        paths_2d = trajectories_coefs.reshape(trajectories_coefs.shape[0], -1)
+        self.clusters = shc.fclusterdata(paths_2d, 8, criterion="distance") # TO DO: 8 as parameter!
         return self
     
    
