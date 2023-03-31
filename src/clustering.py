@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 from scipy.spatial.distance import cdist
 import numpy as np
 import random
+import math
 
 from .complex_datastructure import Complex
 
@@ -25,7 +26,7 @@ class Clustering:
         """
         :param trajectory: list of symbols representing the trajectory
         """
-        coefs = [self.complex.points[v] for v in trajectory]
+        coefs = np.array([self.complex.points[v] for v in trajectory])
         return coefs
     
     def fit(self, trajectories):
@@ -76,11 +77,16 @@ class HierarchicalClustering(Clustering):
         """
         :param trajectories: list of trajectories (consisting of symbols)
         """
-        def combinatorial_dict(x,y):
-            pass
-        trajectories_coefs = np.array(list(map(self.symbols_to_coefs, trajectories)))
-        paths_2d = trajectories_coefs.reshape(trajectories_coefs.shape[0], -1)
-        self.clusters = shc.fclusterdata(paths_2d, 8, criterion="distance") # TO DO: 8 as parameter!
+        def combinatorial_distance(t1, t2):
+            sum = 0
+            for p1, p2 in zip(t1,t2):
+                sum += dists[int(p1),int(p2)]
+            return sum
+
+        dists = self.complex.combinatorial_dist()  # how to pass as an argument
+        #trajectories_coefs = np.array(list(map(self.symbols_to_coefs, trajectories)))
+        #paths_2d = trajectories_coefs.reshape(trajectories_coefs.shape[0], -1)
+        self.clusters = shc.fclusterdata(trajectories, 6, criterion="distance", metric=combinatorial_distance) # TO DO: 8 as parameter! smaller value means less clusters
         return self
     
    
@@ -90,13 +96,27 @@ class TopologicalClustering(Clustering):
         """
         :param trajectories: list of trajectories (consisting of symbols)
         """
-        N = 3 #number of iterations to be set
-        self.clusters = np.ones(len(trajectories))
-        for step in range(N):
+        iter = 17 #number of iterations to be set
+        edges = self.complex.one_simplexes()
+        self.clusters = np.ones(len(trajectories), dtype=np.int8)
+        for step in range(iter):
             num_clust = max(self.clusters)
-            for cluster_nr in range(1, num_clust+1):
-                C = Complex([trajectories[trajectories == cluster_nr, step]])
-                # TO DO
+            new_cluster = 1
+            for cluster in range(1, num_clust+1):
+                points_subset = trajectories[list(i for i, c in enumerate(self.clusters) if c == 1), step]
+                print(points_subset)
+                C = Complex(self.symbols_to_coefs(points_subset), {0: [(p,) for p in points_subset],
+                                                    1: [(u,v) if ([u,v] in edges) else print() for u in points_subset for v in points_subset]})
+                #C.draw_complex() -  should I renumarate them???
+                print(C.connected_components())
+                for comp in C.connected_components():
+                    for p in comp:
+                        for i in range(len(self.clusters)):
+                            if trajectories[i,step] == p:
+                                self.clusters[i] = new_cluster
+                    new_cluster += 1
+            print(self.clusters)
+
                 
         return self
 

@@ -3,6 +3,7 @@ from gudhi import SimplexTree
 import numpy as np
 import plotly.graph_objects as go
 from scipy.cluster.hierarchy import DisjointSet
+import math
 
 class Complex:
     """
@@ -47,8 +48,26 @@ class Complex:
         Function printing all the simplexes present in complex
         """
         for simplex in self.complex.get_filtration():
-            print("(%s, %.2f)" % tuple(simplex))       
-            
+            print("(%s, %.2f)" % tuple(simplex))
+
+    #floyd_warshall algorithm
+    def combinatorial_dist(self):
+        edges = self.one_simplexes()
+        nodes = self.zero_simplexes().flatten()
+        N = len(nodes)
+
+        dist_matrix = np.full((N, N), math.inf)  # only upper half of this matrix will be really used
+        for u, v in edges:
+            dist_matrix[u, v] = 1
+            dist_matrix[v, u] = 1
+        for u in nodes:
+            dist_matrix[u, u] = 0
+        for k in range(N):
+            for i in range(N):
+                for j in range(N):
+                    if dist_matrix[i, j] > dist_matrix[i, k] + dist_matrix[k, j]:
+                        dist_matrix[i, j] = dist_matrix[i, k] + dist_matrix[k, j]
+        return dist_matrix
     
     def draw_complex(self, show_now=True):
         triangles = self.two_simplexes()
