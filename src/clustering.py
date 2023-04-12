@@ -29,17 +29,17 @@ class Clustering:
         coefs = np.array([self.complex.points[v] for v in trajectory])
         return coefs
     
-    def fit(self, trajectories):
-        pass # needs to be implemented by children classes
+    #def fit(self, trajectories, *params):
+    #    pass # needs to be implemented by children classes
             
-    def fit_predict(self, trajectories):
+    def fit_predict(self, trajectories, *params):
         """
         :param trajectories: list of trajectories (consisting of symbols)
         """
-        self.fit(trajectories) 
+        self.fit(trajectories, params)
         return self.clusters
     
-    def draw_predict(self, trajectories, show_now=True, on_complex=True):
+    def draw_predict(self, trajectories, *params, show_now=True, on_complex=True):
         """
         :param trajectories: list of trajectories (consisting of symbols)
         :param show_now: flag indicating if the plot should be printed now (or only returned)
@@ -52,7 +52,7 @@ class Clustering:
             fig = go.Figure()
             fig.update_layout(autosize=False, width=1000, height=1000)
             
-        clusters = self.fit_predict(trajectories)
+        clusters = self.fit_predict(trajectories, params[0])
         trajectories_coefs = np.array(list(map(self.symbols_to_coefs, trajectories)))
         color_map = [(random.randint(0,255), random.randint(0,255), random.randint(0,255)) for i in range(max(clusters))]
         
@@ -73,10 +73,12 @@ class Clustering:
 
 class HierarchicalClustering(Clustering):
              
-    def fit(self, trajectories):
+    def fit(self, trajectories, t):
         """
         :param trajectories: list of trajectories (consisting of symbols)
+        :param t:
         """
+        t = t[0]
         def combinatorial_distance(t1, t2):
             sum = 0
             for p1, p2 in zip(t1,t2):
@@ -86,38 +88,41 @@ class HierarchicalClustering(Clustering):
         dists = self.complex.combinatorial_dist()  # how to pass as an argument
         #trajectories_coefs = np.array(list(map(self.symbols_to_coefs, trajectories)))
         #paths_2d = trajectories_coefs.reshape(trajectories_coefs.shape[0], -1)
-        self.clusters = shc.fclusterdata(trajectories, 6, criterion="distance", metric=combinatorial_distance) # TO DO: 8 as parameter! smaller value means less clusters
+        self.clusters = shc.fclusterdata(trajectories, t, criterion="distance", metric=combinatorial_distance)
         return self
     
    
 class TopologicalClustering(Clustering):
              
-    def fit(self, trajectories):
+    def fit(self, trajectories, iter):
         """
         :param trajectories: list of trajectories (consisting of symbols)
+        :param iter:
         """
-        iter = 17 #number of iterations to be set
-        edges = self.complex.one_simplexes()
+        iter = iter[0]
+        edges = self.complex.one_simplexes().tolist()
         self.clusters = np.ones(len(trajectories), dtype=np.int8)
         for step in range(iter):
             num_clust = max(self.clusters)
             new_cluster = 1
             for cluster in range(1, num_clust+1):
-                points_subset = trajectories[list(i for i, c in enumerate(self.clusters) if c == 1), step]
-                print(points_subset)
-                C = Complex(self.symbols_to_coefs(points_subset), {0: [(p,) for p in points_subset],
-                                                    1: [(u,v) if ([u,v] in edges) else print() for u in points_subset for v in points_subset]})
-                #C.draw_complex() -  should I renumarate them???
-                print(C.connected_components())
+                points_subset = trajectories[list(i for i, c in enumerate(self.clusters) if c == cluster), step]
+                spanned_edges = []
+                spanned_points = []
+                for u in points_subset:
+                    if u not in spanned_points:
+                        spanned_points += [(u,)]
+                    for v in points_subset:
+                        if ([u,v] in edges) and ((u,v) not in spanned_edges):
+                            spanned_edges += [(u,v)]
+                C = Complex(self.symbols_to_coefs(points_subset), {0: spanned_points,
+                                                                   1: spanned_edges})
                 for comp in C.connected_components():
                     for p in comp:
                         for i in range(len(self.clusters)):
                             if trajectories[i,step] == p:
                                 self.clusters[i] = new_cluster
                     new_cluster += 1
-            print(self.clusters)
-
-                
         return self
 
     

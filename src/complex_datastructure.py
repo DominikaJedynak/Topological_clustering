@@ -13,7 +13,8 @@ class Complex:
     
     def __init__(self, points, simplexes=None, max_edge_length=1):
         """
-        :param coordinates: sets of 3d points to build the complex on
+        :param points: sets of 3d points to build the complex on
+        :param simplexes:
         :param max_edge_length: the distance used to decide which subsets of points should create a simplex
         """
         self.points = points
@@ -45,13 +46,16 @@ class Complex:
     
     def list_simplexes(self):
         """
-        Function printing all the simplexes present in complex
+        Function printing all the simplexes present in the complex
         """
         for simplex in self.complex.get_filtration():
             print("(%s, %.2f)" % tuple(simplex))
 
     #floyd_warshall algorithm
     def combinatorial_dist(self):
+        """
+        Returns a matrix of lengths of the shortest paths between all nodes
+        """
         edges = self.one_simplexes()
         nodes = self.zero_simplexes().flatten()
         N = len(nodes)
@@ -78,7 +82,7 @@ class Complex:
         ]
 
         if len(triangles) > 0:
-            data = data + [go.Mesh3d(
+            data += [go.Mesh3d(
                 x = self.points[:,0],
                 y = self.points[:,1],
                 z = self.points[:,2],
@@ -90,7 +94,7 @@ class Complex:
         for line in lines:
             a = self.points[line[0]]
             b = self.points[line[1]]
-            data = data + [go.Scatter3d(x=[a[0],b[0]], y=[a[1],b[1]], z=[a[2],b[2]], mode='lines')]
+            data += [go.Scatter3d(x=[a[0],b[0]], y=[a[1],b[1]], z=[a[2],b[2]], mode='lines')]
 
 
         fig = go.Figure(data=data)
