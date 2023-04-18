@@ -4,6 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.cluster.hierarchy import DisjointSet
 import math
+from datetime import datetime
 
 class Complex:
     """
@@ -73,7 +74,7 @@ class Complex:
                         dist_matrix[i, j] = dist_matrix[i, k] + dist_matrix[k, j]
         return dist_matrix
     
-    def draw_complex(self, show_now=True):
+    def draw_complex(self, show_now=True, to_file=True):
         triangles = self.two_simplexes()
         lines = self.one_simplexes()
 
@@ -104,7 +105,11 @@ class Complex:
         fig.update_traces(marker_size=5, selector=dict(type='scatter3d'))
         fig.update_traces(showlegend=False)
         fig.update_layout(autosize=False, width=1000, height=1000)
+        # show now needed temporarily because of how ipynb operates
         if show_now:
-            fig.show()
+            if to_file:
+                fig.write_image("complex_" + datetime.now().strftime("%d-%m-%Y_%H-%M") + ".png")
+            else:
+                fig.show()
         return fig
         

@@ -4,6 +4,7 @@ from scipy.spatial.distance import cdist
 import numpy as np
 import random
 import math
+from datetime import datetime
 
 from .complex_datastructure import Complex
 
@@ -39,7 +40,7 @@ class Clustering:
         self.fit(trajectories, params)
         return self.clusters
     
-    def draw_predict(self, trajectories, *params, show_now=True, on_complex=True):
+    def draw_predict(self, trajectories, *params, show_now=True, on_complex=True, to_file=True):
         """
         :param trajectories: list of trajectories (consisting of symbols)
         :param show_now: flag indicating if the plot should be printed now (or only returned)
@@ -67,7 +68,10 @@ class Clustering:
         #fig = go.Figure(data=data)
         
         if show_now:
-            fig.show()
+            if to_file:
+                fig.write_image(self.__class__.__name__ + "_" + str(params[0]) + "_" + datetime.now().strftime("%d-%m-%Y_%H-%M") + ".png")
+            else:
+                fig.show()
         
     
 
