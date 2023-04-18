@@ -37,14 +37,14 @@ class Clustering:
         """
         :param trajectories: list of trajectories (consisting of symbols)
         """
-        self.fit(trajectories, params)
+        self.fit(trajectories, params[0])
         return self.clusters
     
     def draw_predict(self, trajectories, *params, show_now=True, on_complex=True, to_file=True):
         """
         :param trajectories: list of trajectories (consisting of symbols)
         :param show_now: flag indicating if the plot should be printed now (or only returned)
-        :param on_complex: flag indicating if path should be drawn on a compex or on its own
+        :param on_complex: flag indicating if path should be drawn on a complex or on its own
         """
 
         if on_complex:
@@ -52,8 +52,8 @@ class Clustering:
         else:
             fig = go.Figure()
             fig.update_layout(autosize=False, width=1000, height=1000)
-            
-        clusters = self.fit_predict(trajectories, params[0])
+
+        clusters = self.fit_predict(trajectories, params)
         trajectories_coefs = np.array(list(map(self.symbols_to_coefs, trajectories)))
         color_map = [(random.randint(0,255), random.randint(0,255), random.randint(0,255)) for i in range(max(clusters))]
         
@@ -98,15 +98,21 @@ class HierarchicalClustering(Clustering):
    
 class TopologicalClustering(Clustering):
              
-    def fit(self, trajectories, iter):
+    def fit(self, trajectories, params):
         """
         :param trajectories: list of trajectories (consisting of symbols)
-        :param iter:
+        :param params:
         """
-        iter = iter[0]
+        if len(params) == 2:
+            iter = params[0]
+            window = params[1]
+        else:
+            iter = params[0]
+            window = 2
         edges = self.complex.one_simplexes().tolist()
         self.clusters = np.ones(len(trajectories), dtype=np.int8)
         for step in range(iter):
+            #if step+window > ...
             num_clust = max(self.clusters)
             new_cluster = 1
             for cluster in range(1, num_clust+1):
