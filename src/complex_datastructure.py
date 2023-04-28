@@ -52,6 +52,18 @@ class Complex:
         for simplex in self.complex.get_filtration():
             print("(%s, %.2f)" % tuple(simplex))
 
+    def shortest_path(self, u, v):
+        if not hasattr(self, 'prev'):
+            self.combinatorial_dist()
+        path = [v]
+        while u != v:
+            #print(u,v)
+            v = self.prev[u, v]
+            path = [v] + path
+
+        return path
+
+
     #floyd_warshall algorithm
     def combinatorial_dist(self):
         """
@@ -61,18 +73,23 @@ class Complex:
         nodes = self.zero_simplexes().flatten()
         N = len(nodes)
 
-        dist_matrix = np.full((N, N), math.inf)  # only upper half of this matrix will be really used
+        self.dist_matrix = np.full((N, N), math.inf)  # TO DO: possible to optimize?
+        self.prev = np.full((N, N), None)
         for u, v in edges:
-            dist_matrix[u, v] = 1
-            dist_matrix[v, u] = 1
+            self.dist_matrix[u, v] = 1
+            self.dist_matrix[v, u] = 1
+            self.prev[u][v] = u
+            self.prev[v][u] = v
         for u in nodes:
-            dist_matrix[u, u] = 0
+            self.dist_matrix[u, u] = 0
+            self.prev[u][u] = u
         for k in range(N):
             for i in range(N):
                 for j in range(N):
-                    if dist_matrix[i, j] > dist_matrix[i, k] + dist_matrix[k, j]:
-                        dist_matrix[i, j] = dist_matrix[i, k] + dist_matrix[k, j]
-        return dist_matrix
+                    if self.dist_matrix[i, j] > self.dist_matrix[i, k] + self.dist_matrix[k, j]:
+                        self.dist_matrix[i, j] = self.dist_matrix[i, k] + self.dist_matrix[k, j]
+                        self.prev[i][j] = self.prev[k][j]
+        return self.dist_matrix
     
     def draw_complex(self, show_now=True, to_file=True):
         triangles = self.two_simplexes()
