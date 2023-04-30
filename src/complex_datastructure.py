@@ -6,16 +6,19 @@ from scipy.cluster.hierarchy import DisjointSet
 import math
 from datetime import datetime
 
+
 class Complex:
     """
-    A class for storing max 2D complex build on the set of 3D points. Complex can be created from 
-    a dict of simplexes on a given set of points or as a Rips complex, if dict is not given 
+    A class for storing max 2D complex build on the set of 3D points.
     """
     
     def __init__(self, points, simplexes=None, max_edge_length=1):
         """
-        :param points: sets of 3d points to build the complex on
-        :param simplexes:
+        Constructor creating a complex from either a dictionary of simplexes or as a Rips complex, if dictionary is not
+        given.
+        :param points: array of 3d points to build the complex on
+        :param simplexes: dictionary of simplexes to be included in the complex where number of a point corresponds to
+        its position in 'points' array
         :param max_edge_length: the distance used to decide which subsets of points should create a simplex
         """
         self.points = points
@@ -26,48 +29,67 @@ class Complex:
                     self.complex.insert(s)
         else:
             self.complex = gudhi.RipsComplex(points=points, max_edge_length=max_edge_length).create_simplex_tree(max_dimension=2)
-        
+
     def zero_simplexes(self):
+        """
+        Function returning an array of all zero-simplexes present in the complex.
+        """
         return np.array([s[0] for s in self.complex.get_skeleton(0)])
     
     def one_simplexes(self):
+        """
+        Function returning an array of all one-simplexes present in the complex.
+        """
         return np.array([s[0] for s in self.complex.get_skeleton(1) if len(s[0])==2])
     
     def two_simplexes(self):
+        """
+        Function returning an array of all two-simplexes present in the complex.
+        """
         return np.array([s[0] for s in self.complex.get_skeleton(2) if len(s[0])==3])
    
     def connected_components(self):
+        """
+        Function returning connected components of the complex (disjoint sets of points).
+        """
         components = DisjointSet([s for s in self.zero_simplexes().flatten()])
         for (v1, v2) in list(map(tuple, self.one_simplexes())):
             components.merge(v1, v2)
         return components.subsets()
 
     def count_simplexes(self):
+        """
+        Function returning the number of zero-,one- and two-simplexes respectively.
+        """
         return len(self.zero_simplexes()), len(self.one_simplexes()), len(self.two_simplexes()) 
     
-    def list_simplexes(self):
+    def print_simplexes(self):
         """
-        Function printing all the simplexes present in the complex
+        Function printing all the simplexes present in the complex.
         """
         for simplex in self.complex.get_filtration():
             print("(%s, %.2f)" % tuple(simplex))
 
     def shortest_path(self, u, v):
+        """
+        Function returning the shortest path from node u to v consisting only of one-simplexes belonging to the complex.
+        :param u: starting point
+        :param v: destination point
+        """
         if not hasattr(self, 'prev'):
             self.combinatorial_dist()
         path = [v]
         while u != v:
-            #print(u,v)
             v = self.prev[u, v]
             path = [v] + path
 
         return path
 
-
-    #floyd_warshall algorithm
     def combinatorial_dist(self):
         """
-        Returns a matrix of lengths of the shortest paths between all nodes
+        Function returning a matrix of lengths of the shortest combinatorial paths between all nodes in the complex
+        calculated using Floyd-Warshall algorithm TO DO reference. It also creates matrix 'prev' of preceding nodes
+        from the paths calculation to allow fast reconstruction of the shortest paths later.
         """
         edges = self.one_simplexes()
         nodes = self.zero_simplexes().flatten()
@@ -92,6 +114,13 @@ class Complex:
         return self.dist_matrix
     
     def draw_complex(self, show_now=True, to_file=True):
+        """
+        Function creating a 3D visualization of the complex using Plotly library.
+        :param show_now: flag determining if the complex should be displayed or only a Figure object should be returned
+        by the function
+        :param to_file: flag determining if the complex should be displayed in a regular way or if an image of it should
+        be saved to a file
+        """
         triangles = self.two_simplexes()
         lines = self.one_simplexes()
 
@@ -114,7 +143,6 @@ class Complex:
             b = self.points[line[1]]
             data += [go.Scatter3d(x=[a[0],b[0]], y=[a[1],b[1]], z=[a[2],b[2]], mode='lines')]
 
-
         fig = go.Figure(data=data)
         fig.update_traces(color='lightgrey', selector=dict(type='mesh3d'))
         fig.update_traces(marker_color='lightgrey', selector=dict(type='scatter3d'))
@@ -122,7 +150,6 @@ class Complex:
         fig.update_traces(marker_size=5, selector=dict(type='scatter3d'))
         fig.update_traces(showlegend=False)
         fig.update_layout(autosize=False, width=1000, height=1000)
-        # show now needed temporarily because of how ipynb operates
         if show_now:
             if to_file:
                 fig.write_image("complex_" + datetime.now().strftime("%d-%m-%Y_%H-%M") + ".png")
