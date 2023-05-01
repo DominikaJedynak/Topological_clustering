@@ -164,9 +164,11 @@ class TopologicalClustering(Clustering):
         self.clusters = np.ones(len(trajectories), dtype=np.int8)
         for step in range(iter):
             # TO DO if step+window > ...
+            # we check how many clusters were created up to now
             num_clust = max(self.clusters)
             new_cluster = 1
             for cluster in range(1, num_clust + 1):
+                # we create sub-complexes spanned by the points from trajectories of indexes 'step' to 'step+window'
                 points_subset = np.unique(trajectories[list(i for i, c in enumerate(self.clusters) if c == cluster),
                                           step:step + window].flatten())
                 spanned_edges = []
@@ -179,6 +181,7 @@ class TopologicalClustering(Clustering):
                             spanned_edges += [(u, v)]
                 C = Complex(self.symbols_to_coefs(points_subset), {0: spanned_points,
                                                                    1: spanned_edges})
+                # trajectories whose points belong to one connected component are put in the same cluster
                 for comp in C.connected_components():
                     for p in comp:
                         for i in range(len(self.clusters)):
