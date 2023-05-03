@@ -4,6 +4,7 @@ from scipy.spatial.distance import cdist
 import numpy as np
 import random
 from datetime import datetime
+import math
 
 from .complex_datastructure import Complex
 
@@ -142,12 +143,21 @@ class DTWHierarchicalClustering(HierarchicalClustering):
     def fit(self, trajectories, t):
         """
         Function doing the clustering of given trajectories using DTW.
-        :param trajectories: an array of trajectories (consisting of symbols) which should be of equal length
+        :param trajectories: an array of trajectories (consisting of symbols) not necessarily of equal length
         :param t: scalar used as threshold when forming clusters required by 'fclusterdata' function
         """
         def DTW_distance(t1, t2):
-            # TO DO
-            pass
+            if hasattr(self.complex, "dist_matrix"):
+                dists = self.complex.dist_matrix
+            else:
+                dists = self.complex.combinatorial_dist()
+            DTW = np.full((len(t1)+1, len(t2)+1), math.inf)
+            DTW[0, 0] = 0
+            for i in range(1, len(t1)+1):
+                for j in range(1, len(t2)+1):
+                    d = dists[int(t1[i-1]), int(t2[j-1])] # TO DO check why they are not ints here and in combinatorial dist
+                    DTW[i, j] = d + min(DTW[i-1, j], DTW[i, j-1], DTW[i-1, j-1])
+            return DTW[-1, -1]
 
         return super().fit(trajectories, DTW_distance, t)
 
