@@ -115,7 +115,9 @@ class CombinatorialHierarchicalClustering(HierarchicalClustering):
 
     def fit(self, trajectories, t):
         """
-        Function doing the clustering of given trajectories using combinatorial distance.
+        Function doing the clustering of given trajectories using combinatorial distance which sums up how many edges
+        (one-simplexes of the complex) it requires to get from i-th vertex in one trajectory to corresponding i-th
+        vertex in another trajectory.
         :param trajectories: an array of trajectories (consisting of symbols) which should be of equal length
         :param t: scalar used as threshold when forming clusters required by 'fclusterdata' function
         """

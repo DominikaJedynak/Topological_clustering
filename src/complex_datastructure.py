@@ -83,7 +83,7 @@ class Complex:
             v = self.prev[u, v]
             path = [v] + path
 
-        return path
+        return np.array(path)
 
     def combinatorial_dist(self):
         """
