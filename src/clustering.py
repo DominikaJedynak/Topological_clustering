@@ -36,7 +36,7 @@ class Clustering:
         point from the trajectory its coordinates.
         :param trajectory: an array of symbols representing the trajectory
         """
-        coefs = np.array([self.complex.points[v] for v in trajectory])
+        coefs = np.array([self.complex.points[v] for v in trajectory if v != -1])
         return coefs
 
     def fit_predict(self, trajectories, *params):
@@ -70,7 +70,11 @@ class Clustering:
             clusters = self.fit_predict(trajectories, params[0], params[1])
         else:
             clusters = self.fit_predict(trajectories, params[0])
-        trajectories_coefs = np.array(list(map(self.symbols_to_coefs, trajectories)))
+
+        if isinstance(trajectories, tuple):  # TO DO add drawing fixed paths?
+            trajectories = trajectories[0]
+
+        trajectories_coefs = list(map(self.symbols_to_coefs, trajectories))
         color_map = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in
                      range(max(clusters))]
 
@@ -112,7 +116,7 @@ class CombinatorialHierarchicalClustering(HierarchicalClustering):
     def fit(self, trajectories, t):
         """
         Function doing the clustering of given trajectories using combinatorial distance.
-        :param trajectories: an array of trajectories (consisting of symbols)
+        :param trajectories: an array of trajectories (consisting of symbols) which should be of equal length
         :param t: scalar used as threshold when forming clusters required by 'fclusterdata' function
         """
         def combinatorial_distance(t1, t2):
@@ -136,7 +140,7 @@ class DTWHierarchicalClustering(HierarchicalClustering):
     def fit(self, trajectories, t):
         """
         Function doing the clustering of given trajectories using DTW.
-        :param trajectories: an array of trajectories (consisting of symbols)
+        :param trajectories: an array of trajectories (consisting of symbols) which should be of equal length
         :param t: scalar used as threshold when forming clusters required by 'fclusterdata' function
         """
         def DTW_distance(t1, t2):
@@ -160,17 +164,35 @@ class TopologicalClustering(Clustering):
         :param window: integer value defining how many points of each trajectory we consider in each step of the
         algorithm
         """
+        patched_paths = False
+        if isinstance(trajectories, tuple):  # which means that we have trajectories of different lengths and original
+                                             # indexes were passed along with points
+            original_idx = trajectories[1]
+            trajectories = trajectories[0]
+            patched_paths = True
         edges = self.complex.one_simplexes().tolist()
         self.clusters = np.ones(len(trajectories), dtype=np.int8)
         for step in range(iter):
             # TO DO if step+window > ...
-            # we check how many clusters were created up to now
+            # we check how many clusters have been created up to now
             num_clust = max(self.clusters)
             new_cluster = 1
             for cluster in range(1, num_clust + 1):
                 # we create sub-complexes spanned by the points from trajectories of indexes 'step' to 'step+window'
-                points_subset = np.unique(trajectories[list(i for i, c in enumerate(self.clusters) if c == cluster),
-                                          step:step + window].flatten())
+                if not patched_paths:
+                    points_subset = np.unique(trajectories[list(i for i, c in enumerate(self.clusters) if c == cluster),
+                                              step:step+window].flatten())
+                else:
+                    # we want to consider closer half of the points added between original points during patching
+                    points_subset = []
+                    begin = original_idx[:, step] - (original_idx[:, step] - original_idx[:, max(step-1, 0)]) // 2
+                    end = original_idx[:, step+window] + (original_idx[:, min(step+window+1, len(original_idx[0])-1)] -
+                                                          original_idx[:, step+window]) // 2
+                    trajectories_in_cluster = list(i for i, c in enumerate(self.clusters) if c == cluster)
+                    for t in trajectories_in_cluster:
+                        points_subset += list(trajectories[t, begin[t]:end[t]].flatten())
+                    points_subset = np.unique(np.array(points_subset))
+
                 spanned_edges = []
                 spanned_points = []
                 for u in points_subset:
