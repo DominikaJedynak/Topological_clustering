@@ -150,6 +150,7 @@ class Complex:
         fig.update_traces(marker_size=5, selector=dict(type='scatter3d'))
         fig.update_traces(showlegend=False)
         fig.update_layout(autosize=False, width=1000, height=1000)
+        fig.update_traces(lighting=dict(diffuse=0), selector=dict(type='mesh3d'))
         if show_now:
             if to_file:
                 fig.write_image("complex_" + datetime.now().strftime("%d-%m-%Y_%H-%M") + ".png")

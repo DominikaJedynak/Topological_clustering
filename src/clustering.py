@@ -225,4 +225,51 @@ class TopologicalClustering(Clustering):
         return self
 
 
+class HodgeLaplacianClustering(Clustering):
+    """
+    Class for clustering combinatorial trajectories TO DO.
+    """
+
+    def fit(self, trajectories):
+        # we follow the notation from paper TO DO link
+        nr_points, nr_edges, nr_triangles = self.complex.count_simplexes()
+        B1 = np.zeros((nr_points, nr_edges))
+        B2 = np.zeros((nr_edges, nr_triangles))
+
+        edges = self.complex.one_simplexes()
+        for i in range(nr_edges):
+            u, v = edges[i]
+            B1[u, i] = -1
+            B1[v, i] = 1
+
+        triangles = self.complex.two_simplexes()
+        edges = edges.tolist()  # we need to convert it to list to be able to use 'index' method
+        for i in range(nr_triangles):
+            u, v, w = triangles[i]
+            B2[edges.index([u, v]), i] = 1
+            B2[edges.index([v, w]), i] = 1
+            B2[edges.index([u, w]), i] = -1
+
+        L1 = np.matmul(np.transpose(B1), B1) + np.matmul(B2, np.transpose(B2))
+        eigen_val, eigen_vec = np.linalg.eigh(L1)  # TO DO is it gonna be always symmetric?
+
+        U_harm = eigen_vec[abs(eigen_val - 0) < 0.1**10]
+        # eigen_val = eigen_val[abs(eigen_val - 0) < 0.1**10]  # TO DO: check if 0 fulfills or just leave epsilon?
+
+        f = np.zeros((nr_edges, len(trajectories)))
+        for i in range(len(trajectories)):
+            t = trajectories[i].tolist()
+            for j in range(len(t)-1):
+                u = t[j]
+                v = t[j+1]
+                if u < v:  # TO DO can we ignore u==v so the fact that trajectory remained in the same point?
+                    f[edges.index([u, v]), i] = 1  # TO DO this orientation or from triangles??!
+                elif u > v:
+                    f[edges.index([v, u]), i] = -1
+
+        f_emb = np.matmul(U_harm, f)
+        print(f_emb)
+        return f_emb
+
+
 
