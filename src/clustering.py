@@ -48,8 +48,10 @@ class Clustering:
         """
         if len(params) == 2:
             self.fit(trajectories, params[0], params[1])
-        else:
+        elif len(params) == 1:
             self.fit(trajectories, params[0])
+        else:
+            self.fit(trajectories)
         return self.clusters
 
     def draw_predict(self, trajectories, *params, on_complex=True, to_file=True):
@@ -69,8 +71,10 @@ class Clustering:
 
         if len(params) == 2:
             clusters = self.fit_predict(trajectories, params[0], params[1])
-        else:
+        elif len(params) == 1:
             clusters = self.fit_predict(trajectories, params[0])
+        else:
+            clusters = self.fit_predict(trajectories)
 
         if isinstance(trajectories, tuple):  # TO DO add drawing fixed paths?
             trajectories = trajectories[0]
@@ -254,6 +258,7 @@ class HodgeLaplacianClustering(Clustering):
         eigen_val, eigen_vec = np.linalg.eigh(L1)  # TO DO is it gonna be always symmetric?
 
         U_harm = eigen_vec[abs(eigen_val - 0) < 0.1**10]
+        print(U_harm)
         # eigen_val = eigen_val[abs(eigen_val - 0) < 0.1**10]  # TO DO: check if 0 fulfills or just leave epsilon?
 
         f = np.zeros((nr_edges, len(trajectories)))
@@ -262,8 +267,10 @@ class HodgeLaplacianClustering(Clustering):
             for j in range(len(t)-1):
                 u = t[j]
                 v = t[j+1]
+                if v == -1:
+                    break
                 if u < v:  # TO DO can we ignore u==v so the fact that trajectory remained in the same point?
-                    f[edges.index([u, v]), i] = 1  # TO DO this orientation or from triangles??!
+                    f[edges.index([u, v]), i] = 1
                 elif u > v:
                     f[edges.index([v, u]), i] = -1
 
