@@ -1,6 +1,8 @@
 import scipy.cluster.hierarchy as shc
 import plotly.graph_objects as go
 from scipy.spatial.distance import cdist
+from sklearn.mixture import GaussianMixture
+from sklearn.cluster import DBSCAN
 import numpy as np
 import random
 from datetime import datetime
@@ -91,6 +93,7 @@ class Clustering:
         fig.update_traces(showlegend=False)
 
         if to_file:
+            #params = "" #+ [str(params[0]) + "_" TO DO
             fig.write_image(self.__class__.__name__ + "_" + str(params[0]) + "_" + datetime.now().strftime(
                 "%d-%m-%Y_%H-%M") + ".png")
         else:
@@ -234,7 +237,7 @@ class HodgeLaplacianClustering(Clustering):
     Class for clustering combinatorial trajectories TO DO.
     """
 
-    def fit(self, trajectories):
+    def fit(self, trajectories, eps, min_s):
         # we follow the notation from paper TO DO link
         nr_points, nr_edges, nr_triangles = self.complex.count_simplexes()
         B1 = np.zeros((nr_points, nr_edges))
@@ -255,11 +258,10 @@ class HodgeLaplacianClustering(Clustering):
             B2[edges.index([u, w]), i] = -1
 
         L1 = np.matmul(np.transpose(B1), B1) + np.matmul(B2, np.transpose(B2))
-        eigen_val, eigen_vec = np.linalg.eigh(L1)  # TO DO is it gonna be always symmetric?
+        eigen_val, eigen_vec = np.linalg.eig(L1)
 
-        U_harm = eigen_vec[abs(eigen_val - 0) < 0.1**10]
+        U_harm = eigen_vec[:, abs(eigen_val - 0) < 0.1 ** 10]
         print(U_harm)
-        # eigen_val = eigen_val[abs(eigen_val - 0) < 0.1**10]  # TO DO: check if 0 fulfills or just leave epsilon?
 
         f = np.zeros((nr_edges, len(trajectories)))
         for i in range(len(trajectories)):
@@ -274,9 +276,13 @@ class HodgeLaplacianClustering(Clustering):
                 elif u > v:
                     f[edges.index([v, u]), i] = -1
 
-        f_emb = np.matmul(U_harm, f)
-        print(f_emb)
-        return f_emb
+        f_emb = np.matmul(np.transpose(U_harm), f)
+
+        #gm = GaussianMixture(n_components=n, random_state=0).fit(np.transpose(f_emb))
+        #self.clusters = gm.predict(np.transpose(f_emb)) + np.array([1])
+        self.clusters = DBSCAN(eps=eps, min_samples=min_s).fit(np.transpose(f_emb)).labels_ + np.array([1])
+
+        return f_emb #self
 
 
 
