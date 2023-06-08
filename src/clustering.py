@@ -1,12 +1,14 @@
 import scipy.cluster.hierarchy as shc
 import plotly.graph_objects as go
 from scipy.spatial.distance import cdist
-from sklearn.mixture import GaussianMixture
 from sklearn.cluster import DBSCAN
 import numpy as np
 import random
 from datetime import datetime
 import math
+import matplotlib
+from sympy import Matrix, Float
+
 
 from .complex_datastructure import Complex
 
@@ -84,11 +86,15 @@ class Clustering:
         trajectories_coefs = list(map(self.symbols_to_coefs, trajectories))
         color_map = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in
                      range(max(clusters))]
+        #color_palette = matplotlib.cm.get_cmap('jet')
 
         for path, col in zip(trajectories_coefs, clusters):
             data = []
+            #color = "rgb" + str(color_palette(col/max(clusters))[:-1])
+            #print(color)
             data = data + [go.Scatter3d(x=path[:, 0], y=path[:, 1], z=path[:, 2], mode='markers+lines',
                                         line=dict(color="rgb" + str(color_map[col - 1]), width=10))]
+                                        #line=dict(color=color, width=10))]
             fig.add_traces(data)
         fig.update_traces(showlegend=False)
 
@@ -243,14 +249,14 @@ class HodgeLaplacianClustering(Clustering):
         B1 = np.zeros((nr_points, nr_edges))
         B2 = np.zeros((nr_edges, nr_triangles))
 
-        edges = self.complex.one_simplexes()
+        points = self.complex.zero_simplexes().tolist()
+        edges = self.complex.one_simplexes().tolist() # we need to convert it to list to be able to use 'index' method
         for i in range(nr_edges):
             u, v = edges[i]
-            B1[u, i] = -1
-            B1[v, i] = 1
+            B1[points.index([u]), i] = -1
+            B1[points.index([v]), i] = 1
 
         triangles = self.complex.two_simplexes()
-        edges = edges.tolist()  # we need to convert it to list to be able to use 'index' method
         for i in range(nr_triangles):
             u, v, w = triangles[i]
             B2[edges.index([u, v]), i] = 1
@@ -258,9 +264,20 @@ class HodgeLaplacianClustering(Clustering):
             B2[edges.index([u, w]), i] = -1
 
         L1 = np.matmul(np.transpose(B1), B1) + np.matmul(B2, np.transpose(B2))
-        eigen_val, eigen_vec = np.linalg.eig(L1)
+        print(L1.shape)
+        L1 = Matrix(L1)
+        print(L1.has(Float))
+        print("checkpoint0")
 
-        U_harm = eigen_vec[:, abs(eigen_val - 0) < 0.1 ** 10]
+        eigenspace = L1.eigenvects()
+        print("checkpoint1", eigenspace)
+        zero_vecs = [np.array(vecs, dtype=float) for (eigen_val, m, vecs) in eigenspace if eigen_val == 0]
+        if len(zero_vecs) == 0:
+            print("No zero eigenvalues therefore the embedding is 0-dimensional! Exiting.") # TO DO raise error?
+            return
+        zero_vecs = zero_vecs[0]
+
+        U_harm = np.transpose(np.squeeze(np.array(zero_vecs)))
         print(U_harm)
 
         f = np.zeros((nr_edges, len(trajectories)))
