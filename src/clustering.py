@@ -7,7 +7,6 @@ import random
 from datetime import datetime
 import math
 import matplotlib
-from sympy import Matrix, Float
 
 
 from .complex_datastructure import Complex
@@ -264,20 +263,12 @@ class HodgeLaplacianClustering(Clustering):
             B2[edges.index([u, w]), i] = -1
 
         L1 = np.matmul(np.transpose(B1), B1) + np.matmul(B2, np.transpose(B2))
-        print(L1.shape)
-        L1 = Matrix(L1)
-        print(L1.has(Float))
-        print("checkpoint0")
+        eigen_val, eigen_vec = np.linalg.eig(L1)
 
-        eigenspace = L1.eigenvects()
-        print("checkpoint1", eigenspace)
-        zero_vecs = [np.array(vecs, dtype=float) for (eigen_val, m, vecs) in eigenspace if eigen_val == 0]
-        if len(zero_vecs) == 0:
-            print("No zero eigenvalues therefore the embedding is 0-dimensional! Exiting.") # TO DO raise error?
+        U_harm = eigen_vec[:, abs(eigen_val - 0) < 0.1 ** 10]
+        if len(U_harm) == 0:
+            print("No zero eigenvalues therefore the embedding is 0-dimensional! Exiting.")  # TO DO raise error?
             return
-        zero_vecs = zero_vecs[0]
-
-        U_harm = np.transpose(np.squeeze(np.array(zero_vecs)))
         print(U_harm)
 
         f = np.zeros((nr_edges, len(trajectories)))
@@ -295,8 +286,6 @@ class HodgeLaplacianClustering(Clustering):
 
         f_emb = np.matmul(np.transpose(U_harm), f)
 
-        #gm = GaussianMixture(n_components=n, random_state=0).fit(np.transpose(f_emb))
-        #self.clusters = gm.predict(np.transpose(f_emb)) + np.array([1])
         self.clusters = DBSCAN(eps=eps, min_samples=min_s).fit(np.transpose(f_emb)).labels_ + np.array([1])
 
         return f_emb #self

@@ -14,6 +14,7 @@ def load_plyfile(filename):
     simplices[2] = [tuple(t) for [t,_,_,_] in plydata.elements[2].data]
     return coords, simplices
 
+
 def generate_points(system, dimension, starting_point, n_points=1000, step=0.01):
     """
     Function returning an array of 3D points representing a trajectory obtained by solving a given system
