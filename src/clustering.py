@@ -83,26 +83,95 @@ class Clustering:
             trajectories = trajectories[0]
 
         trajectories_coefs = list(map(self.symbols_to_coefs, trajectories))
-        color_map = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) for i in
-                     range(max(clusters))]
-        #color_palette = matplotlib.cm.get_cmap('jet')
+        color_palette = matplotlib.cm.get_cmap('jet')
 
         for path, col in zip(trajectories_coefs, clusters):
             data = []
-            #color = "rgb" + str(color_palette(col/max(clusters))[:-1])
-            #print(color)
+            color = "rgb" + str(tuple(int(x*256) for x in color_palette(col/max(clusters))[:-1]))
             data = data + [go.Scatter3d(x=path[:, 0], y=path[:, 1], z=path[:, 2], mode='markers+lines',
-                                        line=dict(color="rgb" + str(color_map[col - 1]), width=10))]
-                                        #line=dict(color=color, width=10))]
+                                        line=dict(color=color, width=10))]
             fig.add_traces(data)
         fig.update_traces(showlegend=False)
+        camera = dict(
+            eye=dict(x=-1.5, y=1.0, z=0.2)
+        )
+        fig.update_layout(scene_camera=camera)
 
         if to_file:
-            #params = "" #+ [str(params[0]) + "_" TO DO
-            fig.write_image(self.__class__.__name__ + "_" + str(params[0]) + "_" + datetime.now().strftime(
+            params = str([str(p) + "_" for p in params])
+            fig.write_image(self.__class__.__name__ + "_" + params + datetime.now().strftime(
                 "%d-%m-%Y_%H-%M") + ".png")
         else:
             fig.show()
+
+    def plot_clusters_transitions(self, trajectories, param_values):
+        """
+        Function plotting sankey diagram which represents how new clusters emerged and vanished as the parameter's value
+        was changing.
+        """
+        results = []
+        m = 1
+        last_clusters = [0] * len(trajectories)
+        used_params = []
+
+        # printing outcomes of clustering for increasing parameter values:
+        for p in param_values:
+            if isinstance(p,tuple):
+                self.fit_predict(trajectories, p[0], p[1])
+            else:
+                self.fit_predict(trajectories, p)
+            print(self.clusters)
+            if (self.clusters != last_clusters).any():
+                results += [self.clusters]
+                used_params += [p]
+                last_clusters = self.clusters.copy()
+            if max(self.clusters) > m:
+                m = max(self.clusters)
+        n = len(self.clusters)
+        steps = len(results)
+
+        source_nodes = []
+        target_nodes = []
+        values = []
+        color_palette = matplotlib.cm.get_cmap('jet')
+
+        source_nodes_val = [x + 1 for l in [[i] * m for i in range(m)] for x in l]
+        target_nodes_val = [x + 1 for l in [list(range(m)) for i in range(m)] for x in l]
+
+        # for every jump from i-th parameter value to (i+1)th:
+        for s in range(steps - 1):
+
+            # table storing numbers of transitions
+            val_temp = [0] * (len(source_nodes_val))
+
+            for i, (sn, tn) in enumerate(zip(source_nodes_val, target_nodes_val)):
+                for j in range(n):
+                    # we check how many trajectories change their cluster from sn to tn in that step
+                    if results[s][j] == sn and results[s + 1][j] == tn:
+                        val_temp[i] += 1
+
+            # every time we need to increase cluster's indexes as we want flow to be left to right, not circular
+            source_nodes += [s * m + x for l in [[i] * m for i in range(m)] for x in l]
+            target_nodes += [(s + 1) * m + x for l in [list(range(m)) for i in range(m)] for x in l]
+            values += val_temp
+
+        fig = go.Figure(data=[go.Sankey(
+            node=dict(
+                pad=15,
+                thickness=20,
+                line=dict(color="black", width=0.5),
+                label=["c" + str(i % m + 1) + " for p=" + "{:.2f}".format(used_params[i // m]) for i in range(m * steps)],
+                color=["rgb" + str(tuple(int(x * 256) for x in color_palette((col+1) / max(results[i]))[:-1])) for i in range(steps) for col in
+                       range(m)]
+            ),
+            link=dict(
+                source=source_nodes,
+                target=target_nodes,
+                value=values
+            ))])
+        #fig.update_layout(title_text="Basic Sankey Diagram", font_size=10)
+
+        fig.show()
 
 
 class HierarchicalClustering(Clustering):
@@ -135,6 +204,7 @@ class CombinatorialHierarchicalClustering(HierarchicalClustering):
         :param t: scalar used as threshold when forming clusters required by 'fclusterdata' function
         """
         def combinatorial_distance(t1, t2):
+            assert len(t1) == len(t2) # or allow?
             if hasattr(self.complex, "dist_matrix"):
                 dists = self.complex.dist_matrix
             else:
@@ -142,7 +212,7 @@ class CombinatorialHierarchicalClustering(HierarchicalClustering):
             sum = 0
             for p1, p2 in zip(t1, t2):
                 sum += dists[int(p1), int(p2)]
-            return sum
+            return sum/len(t1)
 
         return super().fit(trajectories, combinatorial_distance, t)
 
@@ -169,7 +239,28 @@ class DTWHierarchicalClustering(HierarchicalClustering):
                 for j in range(1, len(t2)+1):
                     d = dists[int(t1[i-1]), int(t2[j-1])] # TO DO check why they are not ints here and in combinatorial dist
                     DTW[i, j] = d + min(DTW[i-1, j], DTW[i, j-1], DTW[i-1, j-1])
-            return DTW[-1, -1]
+            """ 
+            # calculating a number of matched pairs k:
+            n = len(t1)
+            m = len(t2)
+            k = 0
+
+            while n > 0 and m > 0:
+                k += 1
+                neighbors = [DTW[n - 1][m - 1], DTW[n - 1][m], DTW[n][m - 1]]
+                min_neighbor = min(neighbors)
+                min_index = neighbors.index(min_neighbor)
+                assert DTW[n - 1][m] != DTW[n][m - 1]
+                if min_index == 0:
+                    n -= 1
+                    m -= 1
+                elif min_index == 1:
+                    n -= 1
+                else:
+                    m -= 1
+            print(k)
+            """
+            return 2 * DTW[-1, -1] / (len(t1) + len(t2))
 
         return super().fit(trajectories, DTW_distance, t)
 
@@ -196,6 +287,7 @@ class TopologicalClustering(Clustering):
             patched_paths = True
         edges = self.complex.one_simplexes().tolist()
         self.clusters = np.ones(len(trajectories), dtype=np.int8)
+        self.new_clusters = np.ones(len(trajectories), dtype=np.int8)
         for step in range(iter):
             # TO DO if step+window > ...
             # we check how many clusters have been created up to now
@@ -231,9 +323,11 @@ class TopologicalClustering(Clustering):
                 for comp in C.connected_components():
                     for p in comp:
                         for i in range(len(self.clusters)):
-                            if trajectories[i, step] == p:
-                                self.clusters[i] = new_cluster
+                            # if it was in cluster that we analyze and belongs to current component:
+                            if self.clusters[i] == cluster and trajectories[i, step] == p:
+                                self.new_clusters[i] = new_cluster
                     new_cluster += 1
+            self.clusters = np.copy(self.new_clusters)
         return self
 
 
@@ -242,7 +336,7 @@ class HodgeLaplacianClustering(Clustering):
     Class for clustering combinatorial trajectories TO DO.
     """
 
-    def fit(self, trajectories, eps, min_s):
+    def fit(self, trajectories, eps=1, min_s=1):
         # we follow the notation from paper TO DO link
         nr_points, nr_edges, nr_triangles = self.complex.count_simplexes()
         B1 = np.zeros((nr_points, nr_edges))
@@ -269,7 +363,6 @@ class HodgeLaplacianClustering(Clustering):
         if len(U_harm) == 0:
             print("No zero eigenvalues therefore the embedding is 0-dimensional! Exiting.")  # TO DO raise error?
             return
-        print(U_harm)
 
         f = np.zeros((nr_edges, len(trajectories)))
         for i in range(len(trajectories)):

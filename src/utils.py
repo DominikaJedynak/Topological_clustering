@@ -19,7 +19,7 @@ def generate_points(system, dimension, starting_point, n_points=1000, step=0.01)
     """
     Function returning an array of 3D points representing a trajectory obtained by solving a given system
     using Runge-Kutta (RK) method.
-    :param system: a system of equasions used to generate points
+    :param system: a system of equations used to generate points
     :param dimension: dimension of the equation/of the space to which generated points belong
     :param starting_point: initial state
     :param n_points: length of the trajectory that we want to obtain
@@ -161,7 +161,7 @@ def partial_match_kmp(pattern):
 class Future:
     """
     Class for storing possible extensions found thanks to the Seer class. It stores a sequence found in
-    the history, how many times it occures and where is starts/ends in the history.
+    the history, how many times it occurs and where is starts/ends in the history.
     """
     sequence: tuple
     counter: int
