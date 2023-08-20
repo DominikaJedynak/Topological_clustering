@@ -37,7 +37,7 @@ class Complex:
         return np.array([s[0] for s in self.complex.get_skeleton(0)])
     
     def one_simplexes(self):
-        """
+        """-
         Function returning an array of all one-simplexes present in the complex.
         """
         return np.array([s[0] for s in self.complex.get_skeleton(1) if len(s[0])==2])

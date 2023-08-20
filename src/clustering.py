@@ -79,7 +79,7 @@ class Clustering:
         else:
             clusters = self.fit_predict(trajectories)
 
-        if isinstance(trajectories, tuple):  # TO DO add drawing fixed paths?
+        if isinstance(trajectories, tuple):
             trajectories = trajectories[0]
 
         trajectories_coefs = list(map(self.symbols_to_coefs, trajectories))
@@ -160,7 +160,7 @@ class Clustering:
                 pad=15,
                 thickness=20,
                 line=dict(color="black", width=0.5),
-                label=["c" + str(i % m + 1) + " for p=" + "{:.2f}".format(used_params[i // m]) for i in range(m * steps)],
+                label=["c" + str(i % m + 1) + " for p=" + "{:.2f}".format(used_params[i // m][1]) for i in range(m * steps)],
                 color=["rgb" + str(tuple(int(x * 256) for x in color_palette((col+1) / max(results[i]))[:-1])) for i in range(steps) for col in
                        range(m)]
             ),
@@ -169,8 +169,6 @@ class Clustering:
                 target=target_nodes,
                 value=values
             ))])
-        #fig.update_layout(title_text="Basic Sankey Diagram", font_size=10)
-
         fig.show()
 
 
@@ -237,35 +235,15 @@ class DTWHierarchicalClustering(HierarchicalClustering):
             DTW[0, 0] = 0
             for i in range(1, len(t1)+1):
                 for j in range(1, len(t2)+1):
-                    d = dists[int(t1[i-1]), int(t2[j-1])] # TO DO check why they are not ints here and in combinatorial dist
+                    d = dists[int(t1[i-1]), int(t2[j-1])]
                     DTW[i, j] = d + min(DTW[i-1, j], DTW[i, j-1], DTW[i-1, j-1])
-            """ 
-            # calculating a number of matched pairs k:
-            n = len(t1)
-            m = len(t2)
-            k = 0
 
-            while n > 0 and m > 0:
-                k += 1
-                neighbors = [DTW[n - 1][m - 1], DTW[n - 1][m], DTW[n][m - 1]]
-                min_neighbor = min(neighbors)
-                min_index = neighbors.index(min_neighbor)
-                assert DTW[n - 1][m] != DTW[n][m - 1]
-                if min_index == 0:
-                    n -= 1
-                    m -= 1
-                elif min_index == 1:
-                    n -= 1
-                else:
-                    m -= 1
-            print(k)
-            """
             return 2 * DTW[-1, -1] / (len(t1) + len(t2))
 
         return super().fit(trajectories, DTW_distance, t)
 
 
-class TopologicalClustering(Clustering):
+class ConnectedComponentsClustering(Clustering):
     """
     Class for clustering combinatorial trajectories by analyzing connected components of sub-complexes spanned by the
     points belonging to trajectories.
@@ -285,17 +263,26 @@ class TopologicalClustering(Clustering):
             original_idx = trajectories[1]
             trajectories = trajectories[0]
             patched_paths = True
+            length = len(original_idx[0])
+        else:
+            length = len(trajectories[0])
+
+        num_traj = len(trajectories)
         edges = self.complex.one_simplexes().tolist()
-        self.clusters = np.ones(len(trajectories), dtype=np.int8)
-        self.new_clusters = np.ones(len(trajectories), dtype=np.int8)
+        self.clusters = np.ones(num_traj, dtype=np.int8)
+        new_clusters = np.ones(num_traj, dtype=np.int8)
+
         for step in range(iter):
-            # TO DO if step+window > ...
+            if step + window > length:
+                print("Paths too short for that request!")
+                break
             # we check how many clusters have been created up to now
             num_clust = max(self.clusters)
             new_cluster = 1
             for cluster in range(1, num_clust + 1):
                 # we create sub-complexes spanned by the points from trajectories of indexes 'step' to 'step+window'
                 if not patched_paths:
+                    # the subset of points from step to step+window of all trajectories in cluster 'cluster'
                     points_subset = np.unique(trajectories[list(i for i, c in enumerate(self.clusters) if c == cluster),
                                               step:step+window].flatten())
                 else:
@@ -312,22 +299,28 @@ class TopologicalClustering(Clustering):
                 spanned_edges = []
                 spanned_points = []
                 for u in points_subset:
-                    if u not in spanned_points:
-                        spanned_points += [(u,)]
+                    #if u not in spanned_points:
+                    spanned_points += [(u,)]
                     for v in points_subset:
-                        if ([u, v] in edges) and ((u, v) not in spanned_edges):
-                            spanned_edges += [(u, v)]
+                        if ([min(u,v), max(u,v)] in edges) and ((min(u,v), max(u,v)) not in spanned_edges):
+                            spanned_edges += [(min(u,v), max(u,v))]
                 C = Complex(self.symbols_to_coefs(points_subset), {0: spanned_points,
                                                                    1: spanned_edges})
                 # trajectories whose points belong to one connected component are put in the same cluster
                 for comp in C.connected_components():
                     for p in comp:
-                        for i in range(len(self.clusters)):
+                        flag = False
+                        for i in range(num_traj):
                             # if it was in cluster that we analyze and belongs to current component:
                             if self.clusters[i] == cluster and trajectories[i, step] == p:
-                                self.new_clusters[i] = new_cluster
-                    new_cluster += 1
-            self.clusters = np.copy(self.new_clusters)
+                                new_clusters[i] = new_cluster
+                                flag = True
+                        #if not flag:
+                        #    print("Panic")
+                    if len(comp) > 0 and flag:
+                        new_cluster += 1
+                    #print(new_clusters)
+            self.clusters = np.copy(new_clusters)
         return self
 
 
@@ -357,11 +350,11 @@ class HodgeLaplacianClustering(Clustering):
             B2[edges.index([u, w]), i] = -1
 
         L1 = np.matmul(np.transpose(B1), B1) + np.matmul(B2, np.transpose(B2))
-        eigen_val, eigen_vec = np.linalg.eig(L1)
+        eigen_val, eigen_vec = np.linalg.eigh(L1)
 
         U_harm = eigen_vec[:, abs(eigen_val - 0) < 0.1 ** 10]
         if len(U_harm) == 0:
-            print("No zero eigenvalues therefore the embedding is 0-dimensional! Exiting.")  # TO DO raise error?
+            print("No zero eigenvalues therefore the embedding is 0-dimensional! Exiting.")
             return
 
         f = np.zeros((nr_edges, len(trajectories)))
@@ -372,7 +365,7 @@ class HodgeLaplacianClustering(Clustering):
                 v = t[j+1]
                 if v == -1:
                     break
-                if u < v:  # TO DO can we ignore u==v so the fact that trajectory remained in the same point?
+                if u < v:
                     f[edges.index([u, v]), i] = 1
                 elif u > v:
                     f[edges.index([v, u]), i] = -1
